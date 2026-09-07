@@ -5,9 +5,10 @@
 
 services:
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ghcr.io/farhanis96/chatbot_proj_pizion:latest
+    # build: # Hostinger can't build private context reliably; use prebuilt GHCR image (built via GitHub Action)
+    #   context: .
+    #   dockerfile: Dockerfile
     restart: unless-stopped
     depends_on:
       - db
