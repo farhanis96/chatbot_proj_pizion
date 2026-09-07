@@ -28,8 +28,8 @@ services:
       DB_HOST: "${DB_HOST:-db}"
       DB_PORT: "${DB_PORT:-3306}"
       DB_DATABASE: "${DB_DATABASE:-whatsmine}"
-      DB_USERNAME: "${DB_USERNAME:-whatsmine}"
-      DB_PASSWORD: "${DB_PASSWORD:-whatsmine}"
+      DB_USERNAME: "whatsmine"
+      DB_PASSWORD: "whatsmine"
       # Redis / Cache / Queue
       REDIS_HOST: "${REDIS_HOST:-redis}"
       REDIS_PORT: "${REDIS_PORT:-6379}"
@@ -61,9 +61,9 @@ services:
     restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD:-root}"
-      MYSQL_DATABASE: "${DB_DATABASE:-whatsmine}"
-      MYSQL_USER: "${DB_USERNAME:-whatsmine}"
-      MYSQL_PASSWORD: "${DB_PASSWORD:-whatsmine}"
+      MYSQL_DATABASE: "${MYSQL_DATABASE:-whatsmine}"
+      MYSQL_USER: "whatsmine"
+      MYSQL_PASSWORD: "whatsmine"
     volumes:
       - db_data:/var/lib/mysql
     networks:
