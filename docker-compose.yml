@@ -1,7 +1,6 @@
-# Hostinger Docker Manager + Traefik ready
-# Deploy via: https://raw.githubusercontent.com/farhanis96/chatbot_proj_pizion/main/docker-compose.yml
-# Hostinger injects COMPOSE_PROJECT_NAME and TRAEFIK_HOST automatically. Do NOT hardcode domain.
-# Ensure Traefik template is deployed first (Docker Manager → Catalog → Traefik).
+# Hostinger Docker Manager - Traefik is on host network (srv1836041)
+# Deploy via: https://github.com/farhanis96/chatbot_proj_pizion
+# Hostinger injects COMPOSE_PROJECT_NAME and TRAEFIK_HOST; Traefik discovers via docker provider on host network.
 
 services:
   app:
@@ -49,7 +48,6 @@ services:
       - storage_data:/var/www/html/storage
       - bootstrap_cache:/var/www/html/bootstrap/cache
     networks:
-      - traefik-proxy
       - internal
     labels:
       - traefik.enable=true
@@ -87,7 +85,5 @@ volumes:
   bootstrap_cache:
 
 networks:
-  traefik-proxy:
-    external: true
   internal:
     driver: bridge
