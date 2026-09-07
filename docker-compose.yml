@@ -1,0 +1,92 @@
+# Hostinger Docker Manager + Traefik ready
+# Deploy via: https://raw.githubusercontent.com/farhanis96/chatbot_proj_pizion/main/docker-compose.yml
+# Hostinger injects COMPOSE_PROJECT_NAME and TRAEFIK_HOST automatically. Do NOT hardcode domain.
+# Ensure Traefik template is deployed first (Docker Manager → Catalog → Traefik).
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - db
+      - redis
+    environment:
+      # App - override in Hostinger UI → Environment variables
+      APP_NAME: "${APP_NAME:-WhatsMine}"
+      APP_ENV: "${APP_ENV:-production}"
+      APP_DEBUG: "${APP_DEBUG:-false}"
+      APP_URL: "${APP_URL:-https://${COMPOSE_PROJECT_NAME}.${TRAEFIK_HOST}}"
+      APP_KEY: "${APP_KEY:-base64:2hkalBLFedjRy9Qzp8vK8k4A6UV//7e06UUL8pHARMU=}"
+      APP_INSTALLED: "${APP_INSTALLED:-true}"
+      APP_VERSION: "${APP_VERSION:-1.7.0}"
+      APP_LOCALE: "${APP_LOCALE:-en}"
+      LICENSE_VERIFY: "${LICENSE_VERIFY:-false}"
+      # DB - Hostinger internal service name is `db`
+      DB_CONNECTION: "${DB_CONNECTION:-mysql}"
+      DB_HOST: "${DB_HOST:-db}"
+      DB_PORT: "${DB_PORT:-3306}"
+      DB_DATABASE: "${DB_DATABASE:-whatsmine}"
+      DB_USERNAME: "${DB_USERNAME:-whatsmine}"
+      DB_PASSWORD: "${DB_PASSWORD:-whatsmine}"
+      # Redis / Cache / Queue
+      REDIS_HOST: "${REDIS_HOST:-redis}"
+      REDIS_PORT: "${REDIS_PORT:-6379}"
+      REDIS_PASSWORD: "${REDIS_PASSWORD:-}"
+      CACHE_STORE: "${CACHE_STORE:-redis}"
+      QUEUE_CONNECTION: "${QUEUE_CONNECTION:-redis}"
+      SESSION_DRIVER: "${SESSION_DRIVER:-redis}"
+      BROADCAST_CONNECTION: "${BROADCAST_CONNECTION:-log}"
+      FILESYSTEM_DISK: "${FILESYSTEM_DISK:-local}"
+      # Mail (log by default)
+      MAIL_MAILER: "${MAIL_MAILER:-log}"
+      MAIL_HOST: "${MAIL_HOST:-127.0.0.1}"
+      MAIL_PORT: "${MAIL_PORT:-2525}"
+      MAIL_FROM_ADDRESS: "${MAIL_FROM_ADDRESS:-hello@example.com}"
+    volumes:
+      - storage_data:/var/www/html/storage
+      - bootstrap_cache:/var/www/html/bootstrap/cache
+    networks:
+      - traefik-proxy
+      - internal
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME}.rule=Host(`${COMPOSE_PROJECT_NAME}.${TRAEFIK_HOST}`)
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME}.entrypoints=websecure
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME}.tls.certresolver=letsencrypt
+      - traefik.http.services.${COMPOSE_PROJECT_NAME}.loadbalancer.server.port=8000
+
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD:-root}"
+      MYSQL_DATABASE: "${DB_DATABASE:-whatsmine}"
+      MYSQL_USER: "${DB_USERNAME:-whatsmine}"
+      MYSQL_PASSWORD: "${DB_PASSWORD:-whatsmine}"
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - internal
+    # Not exposed to Traefik - internal only
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    networks:
+      - internal
+
+volumes:
+  db_data:
+  redis_data:
+  storage_data:
+  bootstrap_cache:
+
+networks:
+  traefik-proxy:
+    external: true
+  internal:
+    driver: bridge
