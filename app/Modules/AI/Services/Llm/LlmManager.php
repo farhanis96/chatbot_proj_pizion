@@ -30,7 +30,8 @@ class LlmManager
         foreach (['openai', 'anthropic', 'gemini'] as $provider) {
             $creds = CredentialResolver::for($workspace)->llm($provider);
             if ($creds) {
-                return static::build($provider, $creds->toArray());
+                $model = $creds->defaultModel() ?: null;
+                return static::build($provider, $creds->toArray(), $model ? ['chat' => $model] : []);
             }
         }
 
@@ -68,7 +69,8 @@ class LlmManager
         foreach (self::EMBED_CAPABLE as $provider) {
             $creds = CredentialResolver::for($workspace)->llm($provider);
             if ($creds) {
-                return static::build($provider, $creds->toArray());
+                $model = $creds->defaultModel() ?: null;
+                return static::build($provider, $creds->toArray(), $model ? ['chat' => $model, 'embed' => $model] : []);
             }
         }
 

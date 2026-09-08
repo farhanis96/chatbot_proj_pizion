@@ -13,4 +13,9 @@ class LlmCredentials extends CredentialValueObject
     {
         return $this->get('organization_id');
     }
+
+    public function defaultModel(): ?string
+    {
+        return $this->get('default_model');
+    }
 }

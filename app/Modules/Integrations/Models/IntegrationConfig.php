@@ -117,6 +117,7 @@ class IntegrationConfig extends Model
         'llm_openai_default' => [
             ['key' => 'api_key',        'label' => 'API Key',        'type' => 'password', 'required' => true],
             ['key' => 'organization_id', 'label' => 'Organization ID', 'type' => 'text',     'required' => false],
+            ['key' => 'default_model',   'label' => 'Default Model',   'type' => 'text',     'required' => false, 'hint' => 'OpenRouter model id, e.g. openrouter/auto, anthropic/claude-3.5-sonnet, openai/gpt-4o, meta-llama/llama-3.1-70b-instruct'],
         ],
         'llm_anthropic_default' => [
             ['key' => 'api_key', 'label' => 'API Key', 'type' => 'password', 'required' => true],

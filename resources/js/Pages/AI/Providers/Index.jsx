@@ -150,9 +150,18 @@ function ProviderCard({ provider }) {
                 </div>
                 <div>
                     <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400">{t('ai.default_chat_model')}</label>
-                    <select value={data.default_model_chat} onChange={e => setData('default_model_chat', e.target.value)} className="mt-1 w-full rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 px-3 py-2 text-sm">
-                        {info.models?.map(m => <option key={m} value={m}>{m}</option>)}
-                    </select>
+                    <input
+                        type="text"
+                        value={data.default_model_chat}
+                        onChange={e => setData('default_model_chat', e.target.value)}
+                        placeholder="e.g. openrouter/auto, anthropic/claude-3.5-sonnet, openai/gpt-4o"
+                        list={`models-${provider.provider}`}
+                        className="mt-1 w-full rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 px-3 py-2 text-sm"
+                    />
+                    <datalist id={`models-${provider.provider}`}>
+                        {info.models?.map(m => <option key={m} value={m} />)}
+                    </datalist>
+                    <p className="mt-1 text-xs text-neutral-400">Type any OpenRouter model id (e.g. openrouter/auto). Suggestions shown for convenience.</p>
                 </div>
                 <label className="flex items-center gap-2 text-sm cursor-pointer">
                     <input type="checkbox" checked={data.enabled} onChange={e => setData('enabled', e.target.checked)} className="rounded" />
