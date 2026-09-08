@@ -576,13 +576,15 @@ function ProviderCard({ item, onTest, onSetDefault, testing, settingDefault }) {
     );
 }
 
-export default function IntegrationsIndex({ grouped }) {
+export default function IntegrationsIndex({ grouped, aiProvidersVisible }) {
     const { t } = useTranslation();
     const { props } = usePage();
     const flash = props.flash ?? {};
     const [testing, setTesting] = useState(null);
     const [testResults, setTestResults] = useState({});
     const [settingDefault, setSettingDefault] = useState(null);
+    const [aiVisible, setAiVisible] = useState(aiProvidersVisible ?? true);
+    const [togglingAi, setTogglingAi] = useState(false);
 
     const handleTest = async (provider) => {
         setTesting(provider);
@@ -601,6 +603,16 @@ export default function IntegrationsIndex({ grouped }) {
         setSettingDefault(provider);
         router.post(route('admin.integrations.set-default', provider), {}, {
             onFinish: () => setSettingDefault(null),
+        });
+    };
+
+    const handleToggleAiVisibility = () => {
+        const next = !aiVisible;
+        setTogglingAi(true);
+        router.put(route('admin.integrations.ai-visibility'), { enabled: next }, {
+            preserveScroll: true,
+            onSuccess: () => setAiVisible(next),
+            onFinish: () => setTogglingAi(false),
         });
     };
 
@@ -640,6 +652,29 @@ export default function IntegrationsIndex({ grouped }) {
                         {flash.error}
                     </div>
                 )}
+
+                <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-5">
+                    <div className="flex items-center justify-between gap-4">
+                        <div>
+                            <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">AI Providers Section</h3>
+                            <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+                                Show or hide the AI Providers tab on the client panel. When off, clients will not see AI Providers.
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={handleToggleAiVisibility}
+                            disabled={togglingAi}
+                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus:outline-none disabled:opacity-50 ${aiVisible ? 'bg-brand-600' : 'bg-neutral-200 dark:bg-neutral-700'}`}
+                            aria-pressed={aiVisible}
+                        >
+                            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${aiVisible ? 'translate-x-5' : 'translate-x-1'}`} />
+                        </button>
+                    </div>
+                    <p className={`mt-2 text-xs font-medium ${aiVisible ? 'text-green-600 dark:text-green-400' : 'text-neutral-400'}`}>
+                        {aiVisible ? 'Visible to clients' : 'Hidden from clients'}
+                    </p>
+                </div>
 
                 {sortedCategories.map(category => (
                     <div key={category}>

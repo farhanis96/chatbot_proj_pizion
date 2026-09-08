@@ -13,6 +13,10 @@ class AiProviderController extends Controller
 {
     public function index(Request $request): Response
     {
+        if (\App\Models\SystemSetting::get('ai_providers_client_visible', 'false') !== 'true') {
+            abort(404);
+        }
+
         $workspaceId = $request->user()->current_workspace_id ?? $request->user()->workspace_id;
         $configs = AiProviderConfig::where('workspace_id', $workspaceId)->get()->keyBy('provider');
 
@@ -29,6 +33,10 @@ class AiProviderController extends Controller
 
     public function update(Request $request, string $provider): RedirectResponse
     {
+        if (\App\Models\SystemSetting::get('ai_providers_client_visible', 'false') !== 'true') {
+            abort(404);
+        }
+
         abort_unless(in_array($provider, ['openai', 'anthropic', 'gemini'], true), 404);
         $workspaceId = $request->user()->current_workspace_id ?? $request->user()->workspace_id;
 

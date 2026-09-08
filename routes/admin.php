@@ -175,6 +175,7 @@ Route::put('/pusher-settings', [PusherSettingsController::class, 'update'])->nam
 Route::post('/pusher-settings/test', [PusherSettingsController::class, 'test'])->name('pusher-settings.test')->middleware('permission:manage_settings');
 
 // Integrations (system-level credential management)
+Route::put('/integrations/ai-visibility', [IntegrationConfigController::class, 'toggleAiProviders'])->name('integrations.ai-visibility')->middleware('permission:manage_integrations');
 Route::get('/integrations', [IntegrationConfigController::class, 'index'])->name('integrations.index')->middleware('permission:manage_integrations');
 Route::get('/integrations/audit-log', [IntegrationConfigController::class, 'auditLogIndex'])->name('integrations.audit-log')->middleware('permission:manage_integrations');
 Route::get('/integrations/{provider}', [IntegrationConfigController::class, 'edit'])->name('integrations.edit')->middleware('permission:manage_integrations');

@@ -24,11 +24,12 @@ function safeRoute(name, ...args) {
  * and items. Keep all nav changes here only.
  */
 export default function useClientNav() {
-    const { auth, branding } = usePage().props;
+    const { auth, branding, aiProvidersVisible } = usePage().props;
     const { t } = useTranslation();
     const user = auth?.user;
     const docsUrl = branding?.docs_url;
     const isClientAdmin = user?.client_role === 'administrator';
+    const showAiProviders = aiProvidersVisible ?? true;
 
     const accountItems = [
         { label: t('nav.dashboard'), href: safeRoute('client.dashboard'), icon: <LayoutDashboard className={iconClass} />, activePattern: 'client.dashboard' },
@@ -92,7 +93,7 @@ export default function useClientNav() {
     const aiItems = [
         { label: t('nav.chatbots'),        href: safeRoute('client.ai.chatbots.index'),        icon: <Bot className={iconClass} />,      activePattern: 'client.ai.chatbots.*' },
         { label: t('nav.knowledge_bases'), href: safeRoute('client.ai.knowledge-bases.index'), icon: <Database className={iconClass} />, activePattern: 'client.ai.knowledge-bases.*' },
-        { label: t('nav.ai_providers'),    href: safeRoute('client.ai.providers.index'),        icon: <Bot className={iconClass} />,      activePattern: 'client.ai.providers.*' },
+        ...(showAiProviders ? [{ label: t('nav.ai_providers'), href: safeRoute('client.ai.providers.index'), icon: <Bot className={iconClass} />, activePattern: 'client.ai.providers.*' }] : []),
     ];
 
     const socialItems = [

@@ -39,6 +39,7 @@ class IntegrationConfigController extends Controller
 
         return Inertia::render('Admin/Integrations/Index', [
             'grouped' => $grouped,
+            'aiProvidersVisible' => \App\Models\SystemSetting::get('ai_providers_client_visible', 'true') === 'true',
         ]);
     }
 
@@ -190,6 +191,17 @@ class IntegrationConfigController extends Controller
         app(StorageManager::class)->clearCache();
 
         return back()->with('success', IntegrationConfig::LABELS[$provider].' set as default storage.');
+    }
+
+    public function toggleAiProviders(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'enabled' => ['required', 'boolean'],
+        ]);
+
+        \App\Models\SystemSetting::set('ai_providers_client_visible', $validated['enabled'] ? 'true' : 'false', false, 'integrations');
+
+        return back()->with('success', $validated['enabled'] ? 'AI Providers visible to clients.' : 'AI Providers hidden from clients.');
     }
 
     public function rotate(Request $request, string $provider): RedirectResponse

@@ -360,6 +360,7 @@ class HandleInertiaRequests extends Middleware
             'app_version' => env('APP_VERSION', '1.0.0'),
             'onboardingSummary' => $onboardingSummary,
             'landingPageEnabled' => SystemSetting::get('landing.page_enabled', '1') === '1',
+            'aiProvidersVisible' => SystemSetting::get('ai_providers_client_visible', 'false') === 'true',
             'branding' => $this->brandingShare(),
             'pusher' => $this->pusherPublicConfig(),
             'onesignal' => $this->oneSignalPublicConfig(),
