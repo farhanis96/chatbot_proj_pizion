@@ -1,11 +1,30 @@
-import { Link } from '@inertiajs/react';
-import { useState } from 'react';
+import { Link, usePage } from '@inertiajs/react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChevronDown, Plus, X } from 'lucide-react';
 import { useBranding } from '@/hooks/useBranding';
 
 function NavGroup({ label, items, onClose }) {
+    const hasActive = items.some((item) => {
+        if (typeof item.active === 'function') return item.active();
+        if (item.active) return true;
+        if (item.route) {
+            try { return route().current(item.route); } catch { return false; }
+        }
+        return false;
+    });
     const [open, setOpen] = useState(true);
+    const activeRef = useRef(null);
+
+    useEffect(() => {
+        if (hasActive) setOpen(true);
+    }, [hasActive]);
+
+    useEffect(() => {
+        if (hasActive && open && activeRef.current) {
+            activeRef.current.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        }
+    }, [hasActive, open]);
 
     return (
         <div className="mb-0.5">
@@ -39,6 +58,8 @@ function NavGroup({ label, items, onClose }) {
                                 key={item.key ?? item.route ?? item.href ?? i}
                                 href={item.href ?? (item.route ? route(item.route) : '#')}
                                 onClick={onClose}
+                                ref={isActive ? activeRef : null}
+                                data-active={isActive ? 'true' : undefined}
                                 className={[
                                     'group flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150',
                                     isActive
@@ -80,6 +101,16 @@ export default function Sidebar({
 }) {
     const { t } = useTranslation();
     const { appName, logoUrl } = useBranding();
+    const { url } = usePage();
+    const navRef = useRef(null);
+
+    useEffect(() => {
+        if (!navRef.current) return;
+        const activeEl = navRef.current.querySelector('[data-active="true"]');
+        if (activeEl) {
+            activeEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        }
+    }, [url]);
 
     const content = (
         <aside className="flex h-full w-64 flex-col bg-secondary-900 dark:bg-neutral-900">
@@ -106,7 +137,7 @@ export default function Sidebar({
                 </div>
             )}
 
-            <nav className="flex-1 overflow-y-auto px-2 py-2 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10">
+            <nav ref={navRef} className="flex-1 overflow-y-auto px-2 py-2 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10">
                 {navGroups.length > 0 &&
                     navGroups.map((group, gi) => (
                         <NavGroup
@@ -135,6 +166,7 @@ export default function Sidebar({
                                 key={item.key ?? item.route ?? item.href ?? i}
                                 href={item.href ?? (item.route ? route(item.route) : '#')}
                                 onClick={onClose}
+                                data-active={isActive ? 'true' : undefined}
                                 className={[
                                     'group flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150',
                                     isActive
