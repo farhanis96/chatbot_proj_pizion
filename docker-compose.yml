@@ -82,6 +82,28 @@ services:
     networks:
       - internal
 
+  queue:
+    image: ghcr.io/farhanis96/chatbot_proj_pizion:latest
+    restart: unless-stopped
+    depends_on:
+      - db
+      - redis
+    command: php artisan queue:work database --queue=ai,default,whatsapp,broadcast,social,leads,automation --sleep=3 --tries=3 --max-time=3600
+    environment:
+      APP_KEY: "${APP_KEY:-base64:2hkalBLFedjRy9Qzp8vK8k4A6UV//7e06UUL8pHARMU=}"
+      APP_URL: "${APP_URL:-https://chatbot-pizion.srv1836041.hstgr.cloud}"
+      DB_HOST: "db"
+      DB_PORT: "3306"
+      DB_DATABASE: "whatsmine"
+      DB_USERNAME: "whatsmine"
+      DB_PASSWORD: "whatsmine"
+      QUEUE_CONNECTION: "database"
+    volumes:
+      - storage_data:/var/www/html/storage
+      - bootstrap_cache:/var/www/html/bootstrap/cache
+    networks:
+      - internal
+
 volumes:
   db_data:
   redis_data:
