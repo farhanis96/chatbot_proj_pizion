@@ -599,6 +599,9 @@ class InboxSetupController extends Controller
         $attempts = [
             ['redirect_uri' => ''],
             ['redirect_uri' => url('/app/inbox/setup')],
+            ['redirect_uri' => url('/auth/facebook/callback')],
+            ['redirect_uri' => 'https://chatbot-pizion.srv1836041.hstgr.cloud/app/inbox/setup'],
+            ['redirect_uri' => 'https://chatbot-pizion.srv1836041.hstgr.cloud/auth/facebook/callback'],
             [],
         ];
 
