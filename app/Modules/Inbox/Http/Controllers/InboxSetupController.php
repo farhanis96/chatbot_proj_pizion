@@ -596,22 +596,40 @@ class InboxSetupController extends Controller
             return null;
         }
 
-        $res = Http::get('https://graph.facebook.com/v20.0/oauth/access_token', [
-            'client_id' => $meta->appId(),
-            'client_secret' => $meta->appSecret(),
-            'code' => $code,
-            'redirect_uri' => '',
-        ]);
+        $attempts = [
+            ['redirect_uri' => ''],
+            ['redirect_uri' => url('/app/inbox/setup')],
+            [],
+        ];
 
-        if (! $res->successful() || ! $res->json('access_token')) {
-            Log::warning('Meta embedded signup: code exchange failed', [
-                'response' => $res->json(),
-            ]);
+        foreach ($attempts as $extra) {
+            $params = array_merge([
+                'client_id' => $meta->appId(),
+                'client_secret' => $meta->appSecret(),
+                'code' => $code,
+            ], $extra);
 
-            return null;
+            $res = Http::get('https://graph.facebook.com/v20.0/oauth/access_token', $params);
+
+            if ($res->successful() && $res->json('access_token')) {
+                return $res->json('access_token');
+            }
+
+            $isRetryable = ($res->json('error.code') ?? null) === 100 && str_contains($res->json('error.message') ?? '', 'redirect_uri');
+            if (!$isRetryable) {
+                Log::warning('Meta embedded signup: code exchange failed', [
+                    'response' => $res->json(),
+                    'attempt' => $extra,
+                ]);
+                return null;
+            }
         }
 
-        return $res->json('access_token');
+        Log::warning('Meta embedded signup: code exchange failed after retries', [
+            'code' => substr($code, 0, 10) . '...',
+        ]);
+
+        return null;
     }
 
     private function exchangeForLongLivedToken(string $shortToken): string
