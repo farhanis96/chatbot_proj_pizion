@@ -602,6 +602,8 @@ class InboxSetupController extends Controller
             [],
         ];
 
+        $lastResponse = null;
+        $lastAttempt = null;
         foreach ($attempts as $extra) {
             $params = array_merge([
                 'client_id' => $meta->appId(),
@@ -610,6 +612,8 @@ class InboxSetupController extends Controller
             ], $extra);
 
             $res = Http::get('https://graph.facebook.com/v20.0/oauth/access_token', $params);
+            $lastResponse = $res->json();
+            $lastAttempt = $extra;
 
             if ($res->successful() && $res->json('access_token')) {
                 return $res->json('access_token');
@@ -627,6 +631,8 @@ class InboxSetupController extends Controller
 
         Log::warning('Meta embedded signup: code exchange failed after retries', [
             'code' => substr($code, 0, 10) . '...',
+            'last_attempt' => $lastAttempt,
+            'last_response' => $lastResponse,
         ]);
 
         return null;
