@@ -155,6 +155,25 @@ class MessengerDriver implements ChannelDriverInterface
     {
         $senderId = $event['sender']['id'] ?? '';
         $msgBody = $event['message']['text'] ?? '';
+        $attachments = $event['message']['attachments'] ?? [];
+        $type = 'text';
+        $extraPayload = [];
+
+        if (!empty($attachments) && isset($attachments[0]['type'])) {
+            $attType = $attachments[0]['type'];
+            $url = $attachments[0]['payload']['url'] ?? null;
+            if ($url) {
+                $map = ['image' => 'image', 'video' => 'video', 'audio' => 'audio', 'file' => 'document'];
+                $type = $map[$attType] ?? 'text';
+                $extraPayload[$type] = ['preview_url' => $url, 'url' => $url];
+                if (!empty($attachments[0]['payload']['caption'])) {
+                    $msgBody = $attachments[0]['payload']['caption'];
+                    $extraPayload['caption'] = $msgBody;
+                } elseif ($attType === 'image' && empty($msgBody)) {
+                    $msgBody = '';
+                }
+            }
+        }
 
         // The webhook entry.id is the Facebook Page id. Match it against the page_id
         // we persist when the page was connected (InboxSetupController).
@@ -199,8 +218,8 @@ class MessengerDriver implements ChannelDriverInterface
             'conversation_id' => $conversation->id,
             'direction' => 'in',
             'channel' => 'messenger',
-            'type' => 'text',
-            'payload' => $event,
+            'type' => $type,
+            'payload' => array_merge($event, $extraPayload),
             'body' => $msgBody,
             'status' => 'delivered',
             'provider_message_id' => $event['message']['mid'] ?? null,
