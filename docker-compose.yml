@@ -92,6 +92,7 @@ services:
     environment:
       APP_KEY: "${APP_KEY:-base64:2hkalBLFedjRy9Qzp8vK8k4A6UV//7e06UUL8pHARMU=}"
       APP_URL: "${APP_URL:-https://chatbot-pizion.srv1836041.hstgr.cloud}"
+      DB_CONNECTION: "mysql"
       DB_HOST: "db"
       DB_PORT: "3306"
       DB_DATABASE: "whatsmine"
