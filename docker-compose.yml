@@ -88,7 +88,7 @@ services:
     depends_on:
       - db
       - redis
-    command: php artisan queue:work database --queue=ai,default,whatsapp,broadcast,social,leads,automation --sleep=3 --tries=3 --max-time=3600
+    command: php artisan queue:work database --queue=whatsapp,default,ai,broadcast,social,leads,automation --sleep=1 --tries=3 --max-time=3600
     environment:
       APP_KEY: "${APP_KEY:-base64:2hkalBLFedjRy9Qzp8vK8k4A6UV//7e06UUL8pHARMU=}"
       APP_URL: "${APP_URL:-https://chatbot-pizion.srv1836041.hstgr.cloud}"
