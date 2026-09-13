@@ -36,13 +36,14 @@ class MessengerDriver implements ChannelDriverInterface
         $payload = $message->payload ?? [];
         $imageUrl = $payload['link'] ?? $payload['preview_url'] ?? null;
 
-        // Image messages (e.g. shared products): send the photo as an attachment,
+        // Media messages (image / video / audio / file): send as attachment,
         // then the caption as a follow-up — a Messenger attachment carries no text.
-        if ($message->type === 'image' && $imageUrl) {
+        $attachmentMap = ['image' => 'image', 'video' => 'video', 'audio' => 'audio', 'document' => 'file'];
+        if (isset($attachmentMap[$message->type]) && $imageUrl) {
             $messageId = $this->postMessage($accessToken, $recipient, [
-                'attachment' => ['type' => 'image', 'payload' => ['url' => $imageUrl, 'is_reusable' => true]],
+                'attachment' => ['type' => $attachmentMap[$message->type], 'payload' => ['url' => $imageUrl, 'is_reusable' => true]],
             ]);
-            if (! empty($message->body)) {
+            if (! empty($message->body) && $message->body !== ($payload['filename'] ?? null)) {
                 $this->postMessage($accessToken, $recipient, ['text' => $message->body]);
             }
 

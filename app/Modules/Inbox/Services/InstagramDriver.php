@@ -37,17 +37,23 @@ class InstagramDriver implements ChannelDriverInterface
         $payload = $message->payload ?? [];
         $imageUrl = $payload['link'] ?? $payload['preview_url'] ?? null;
 
-        // Image messages (e.g. shared products): send the photo as an attachment,
-        // then the caption as a follow-up — an IG attachment carries no text.
-        if ($message->type === 'image' && $imageUrl) {
+        // Media messages: send as attachment, then caption as follow-up.
+        // IG supports image / video / audio; documents fall back to link text.
+        $attachmentMap = ['image' => 'image', 'video' => 'video', 'audio' => 'audio'];
+        if (isset($attachmentMap[$message->type]) && $imageUrl) {
             $messageId = $this->postMessage($accessToken, $igAccountId, $recipientId, [
-                'attachment' => ['type' => 'image', 'payload' => ['url' => $imageUrl, 'is_reusable' => true]],
+                'attachment' => ['type' => $attachmentMap[$message->type], 'payload' => ['url' => $imageUrl, 'is_reusable' => true]],
             ]);
-            if (! empty($message->body)) {
+            if (! empty($message->body) && $message->body !== ($payload['filename'] ?? null)) {
                 $this->postMessage($accessToken, $igAccountId, $recipientId, ['text' => $message->body]);
             }
 
             return $messageId;
+        }
+
+        if ($message->type === 'document' && $imageUrl) {
+            $text = trim(($message->body ?? '')."\n".$imageUrl);
+            return $this->postMessage($accessToken, $igAccountId, $recipientId, ['text' => $text !== '' ? $text : $imageUrl]);
         }
 
         return $this->postMessage($accessToken, $igAccountId, $recipientId, ['text' => $message->body]);

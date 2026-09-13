@@ -154,7 +154,7 @@ class MobileConversationController extends WorkspaceScopedController
 
             if ($msgType === 'text') {
                 $msgType = str_starts_with($mimeType, 'image/') ? 'image'
-                    : (str_starts_with($mimeType, 'video/') ? 'video' : 'document');
+                    : (str_starts_with($mimeType, 'video/') ? 'video' : (str_starts_with($mimeType, 'audio/') ? 'audio' : 'document'));
             }
 
             $channel = $conversation->channelAccount?->channel ?? 'whatsapp';
@@ -167,21 +167,31 @@ class MobileConversationController extends WorkspaceScopedController
                 $storedPath = $this->storageManager->prefixedPath('message-media/'.$file->hashName());
                 $this->storageManager->disk()->putFileAs(dirname($storedPath), $file, basename($storedPath));
                 $previewUrl = $this->storageManager->disk()->url($storedPath);
+                if (is_string($previewUrl) && str_starts_with($previewUrl, '/')) {
+                    $previewUrl = rtrim(config('app.url'), '/').$previewUrl;
+                }
 
                 $msgPayload = array_merge($msgPayload ?? [], [
                     'media_id' => $mediaId,
                     'preview_url' => $previewUrl,
+                    'link' => $previewUrl,
                     'caption' => $validated['body'] ?? null,
                     'filename' => $file->getClientOriginalName(),
+                    'mime' => $mimeType,
                 ]);
             } else {
                 $storedPath = $this->storageManager->prefixedPath('message-media/'.$file->hashName());
                 $this->storageManager->disk()->putFileAs(dirname($storedPath), $file, basename($storedPath));
                 $previewUrl = $this->storageManager->disk()->url($storedPath);
+                if (is_string($previewUrl) && str_starts_with($previewUrl, '/')) {
+                    $previewUrl = rtrim(config('app.url'), '/').$previewUrl;
+                }
                 $msgPayload = array_merge($msgPayload ?? [], [
                     'preview_url' => $previewUrl,
+                    'link' => $previewUrl,
                     'caption' => $validated['body'] ?? null,
                     'filename' => $file->getClientOriginalName(),
+                    'mime' => $mimeType,
                 ]);
             }
 

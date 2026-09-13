@@ -172,26 +172,47 @@ class InboxController extends Controller
             // Derive type from MIME if not explicitly set
             if ($msgType === 'text') {
                 $msgType = str_starts_with($mimeType, 'image/') ? 'image'
-                    : (str_starts_with($mimeType, 'video/') ? 'video' : 'document');
+                    : (str_starts_with($mimeType, 'video/') ? 'video' : (str_starts_with($mimeType, 'audio/') ? 'audio' : 'document'));
             }
 
-            // Upload to WhatsApp so we have a media_id for sending
-            $client = CloudApiClient::forWorkspace($conversation->workspace_id);
-            if (! $client) {
-                return response()->json(['error' => 'No active WhatsApp account.'], 422);
-            }
+            $channel = $conversation->channelAccount?->channel ?? 'whatsapp';
 
-            $mediaId = $client->uploadMedia($file->getRealPath(), $mimeType);
+            // Always store locally first so we have a public preview URL
             $storedPath = $this->storageManager->prefixedPath('message-media/'.$file->hashName());
             $this->storageManager->disk()->putFileAs(dirname($storedPath), $file, basename($storedPath));
             $previewUrl = $this->storageManager->disk()->url($storedPath);
+            // Ensure absolute URL for Meta Send API (public disk returns relative path)
+            if (is_string($previewUrl) && str_starts_with($previewUrl, '/')) {
+                $previewUrl = rtrim(config('app.url'), '/').$previewUrl;
+            }
 
-            $msgPayload = array_merge($msgPayload ?? [], [
-                'media_id' => $mediaId,
-                'preview_url' => $previewUrl,
-                'caption' => $validated['body'] ?? null,
-                'filename' => $file->getClientOriginalName(),
-            ]);
+            if ($channel === 'whatsapp') {
+                // Upload to WhatsApp so we have a media_id for sending
+                $client = CloudApiClient::forWorkspace($conversation->workspace_id);
+                if (! $client) {
+                    return response()->json(['error' => 'No active WhatsApp account.'], 422);
+                }
+
+                $mediaId = $client->uploadMedia($file->getRealPath(), $mimeType);
+
+                $msgPayload = array_merge($msgPayload ?? [], [
+                    'media_id' => $mediaId,
+                    'preview_url' => $previewUrl,
+                    'link' => $previewUrl,
+                    'caption' => $validated['body'] ?? null,
+                    'filename' => $file->getClientOriginalName(),
+                    'mime' => $mimeType,
+                ]);
+            } else {
+                // Messenger / Instagram / others: send via public URL, no WhatsApp media_id needed
+                $msgPayload = array_merge($msgPayload ?? [], [
+                    'preview_url' => $previewUrl,
+                    'link' => $previewUrl,
+                    'caption' => $validated['body'] ?? null,
+                    'filename' => $file->getClientOriginalName(),
+                    'mime' => $mimeType,
+                ]);
+            }
 
             // For image/document the 'body' shown in the chat is the caption or filename
             $validated['body'] = $validated['body'] ?? $file->getClientOriginalName();
