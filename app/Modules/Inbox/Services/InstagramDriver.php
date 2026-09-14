@@ -222,6 +222,28 @@ class InstagramDriver implements ChannelDriverInterface
     {
         $senderId = $event['sender']['id'] ?? '';
         $msgBody = $event['message']['text'] ?? '';
+        $attachments = $event['message']['attachments'] ?? [];
+        $type = 'text';
+        $extraPayload = [];
+
+        if (!empty($attachments) && isset($attachments[0]['type'])) {
+            $attType = $attachments[0]['type'];
+            $url = $attachments[0]['payload']['url'] ?? null;
+            if ($url) {
+                $map = ['image' => 'image', 'video' => 'video', 'audio' => 'audio', 'file' => 'document'];
+                $type = $map[$attType] ?? 'text';
+                // Cache scontent URLs locally so playback works after URL expiry
+                $localUrl = $this->cacheInboundMedia($url, $event['message']['mid'] ?? null, $type);
+                $publicUrl = $localUrl ?? $url;
+                $extraPayload[$type] = ['preview_url' => $publicUrl, 'url' => $publicUrl, 'original_url' => $url];
+                if (!empty($attachments[0]['payload']['caption'])) {
+                    $msgBody = $attachments[0]['payload']['caption'];
+                    $extraPayload['caption'] = $msgBody;
+                } elseif ($attType === 'image' && empty($msgBody)) {
+                    $msgBody = '';
+                }
+            }
+        }
 
         // The webhook entry.id is the Instagram account id. Match it against either
         // key we persist (instagram_page_id holds the IG account id for embedded-signup
@@ -268,8 +290,8 @@ class InstagramDriver implements ChannelDriverInterface
             'conversation_id' => $conversation->id,
             'direction' => 'in',
             'channel' => 'instagram',
-            'type' => 'text',
-            'payload' => $event,
+            'type' => $type,
+            'payload' => array_merge($event, $extraPayload),
             'body' => $msgBody,
             'status' => 'delivered',
             'provider_message_id' => $event['message']['mid'] ?? null,
@@ -477,6 +499,48 @@ class InstagramDriver implements ChannelDriverInterface
             ]);
 
             return [];
+        }
+    }
+
+    /**
+     * Download a Meta scontent attachment URL and re-host locally so playback
+     * works after the signed URL expires (otherwise audio shows 00:00).
+     * Returns local public URL or null to keep the original URL.
+     */
+    private function cacheInboundMedia(string $url, ?string $mid, string $type): ?string
+    {
+        try {
+            $resp = Http::timeout(20)->get($url);
+            if (! $resp->successful() || empty($resp->body())) {
+                return null;
+            }
+            $contentType = $resp->header('Content-Type', '');
+            $ext = match (true) {
+                str_contains($contentType, 'mpeg') || str_contains($contentType, 'mp3') => 'mp3',
+                str_contains($contentType, 'mp4') => $type === 'video' ? 'mp4' : 'm4a',
+                str_contains($contentType, 'ogg') => 'ogg',
+                str_contains($contentType, 'wav') => 'wav',
+                str_contains($contentType, 'jpeg') || str_contains($contentType, 'jpg') => 'jpg',
+                str_contains($contentType, 'png') => 'png',
+                str_contains($contentType, 'webp') => 'webp',
+                default => $type === 'audio' ? 'mp3' : ($type === 'video' ? 'mp4' : ($type === 'image' ? 'jpg' : 'bin')),
+            };
+            $key = $mid ? preg_replace('/[^A-Za-z0-9_-]/', '', $mid) : uniqid();
+            $sm = app(\App\Services\StorageManager::class);
+            $path = $sm->prefixedPath("message-media/inbound-{$key}.{$ext}");
+            $sm->disk()->put($path, $resp->body());
+            $local = $sm->disk()->url($path);
+            if (is_string($local) && str_starts_with($local, '/')) {
+                $local = rtrim(config('app.url'), '/').$local;
+            }
+
+            return $local;
+        } catch (\Throwable $e) {
+            Log::info('Instagram webhook: media cache failed, keeping original URL', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return null;
         }
     }
 }
