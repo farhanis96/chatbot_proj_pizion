@@ -531,6 +531,44 @@ class InboxController extends Controller
             $message->update(['payload' => $payload]);
         }
 
+        // Messenger / Instagram: scontent URLs expire — re-download original and cache locally
+        $channel = $message->channel ?? $conversation->channelAccount?->channel ?? null;
+        if (in_array($channel, ['messenger', 'instagram'], true)) {
+            $type = $message->type ?? 'image';
+            $original = $payload[$type]['original_url'] ?? $payload[$type]['url'] ?? $payload['original_url']
+                ?? $payload['message']['attachments'][0]['payload']['url'] ?? null;
+            if ($original) {
+                try {
+                    $resp = \Illuminate\Support\Facades\Http::timeout(20)->get($original);
+                    if ($resp->successful() && ! empty($resp->body())) {
+                        $contentType = $resp->header('Content-Type', '');
+                        $ext = match (true) {
+                            str_contains($contentType, 'mpeg') || str_contains($contentType, 'mp3') => 'mp3',
+                            str_contains($contentType, 'mp4') => $type === 'video' ? 'mp4' : 'm4a',
+                            str_contains($contentType, 'ogg') => 'ogg',
+                            str_contains($contentType, 'wav') => 'wav',
+                            str_contains($contentType, 'jpeg') || str_contains($contentType, 'jpg') => 'jpg',
+                            str_contains($contentType, 'png') => 'png',
+                            str_contains($contentType, 'webp') => 'webp',
+                            default => $type === 'audio' ? 'mp3' : ($type === 'video' ? 'mp4' : ($type === 'image' ? 'jpg' : 'bin')),
+                        };
+                        $filename = $this->storageManager->prefixedPath("message-media/{$message->id}.{$ext}");
+                        $this->storageManager->disk()->put($filename, $resp->body());
+                        $previewUrl = $this->storageManager->disk()->url($filename);
+                        $payload[$type] = array_merge($payload[$type] ?? [], ['preview_url' => $previewUrl, 'url' => $previewUrl]);
+                        $message->update(['payload' => $payload]);
+
+                        return redirect($previewUrl);
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning('Inbox serveMedia messenger re-download failed', [
+                        'message_id' => $message->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+        }
+
         // Resolve media ID from raw WhatsApp webhook payload
         $type = $message->type ?? 'image';
         $mediaId = $payload[$type]['id'] ?? $payload['media_id'] ?? null;

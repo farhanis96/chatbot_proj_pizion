@@ -39,13 +39,21 @@ class InstagramDriver implements ChannelDriverInterface
 
         // Media messages: send as attachment, then caption as follow-up.
         // IG supports image / video / audio; documents fall back to link text.
+        // Caption is best-effort so a caption failure never marks delivered media as failed.
         $attachmentMap = ['image' => 'image', 'video' => 'video', 'audio' => 'audio'];
         if (isset($attachmentMap[$message->type]) && $imageUrl) {
             $messageId = $this->postMessage($accessToken, $igAccountId, $recipientId, [
                 'attachment' => ['type' => $attachmentMap[$message->type], 'payload' => ['url' => $imageUrl, 'is_reusable' => true]],
             ]);
             if (! empty($message->body) && $message->body !== ($payload['filename'] ?? null)) {
-                $this->postMessage($accessToken, $igAccountId, $recipientId, ['text' => $message->body]);
+                try {
+                    $this->postMessage($accessToken, $igAccountId, $recipientId, ['text' => $message->body]);
+                } catch (\Throwable $e) {
+                    Log::warning('Instagram caption follow-up failed (media already delivered)', [
+                        'message_id' => $message->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
             }
 
             return $messageId;
