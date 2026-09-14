@@ -27,13 +27,13 @@ RUN npm ci && npm run build || npm install && npm run build
 # Finish PHP install + perms
 RUN composer install --no-dev --optimize-autoloader --no-interaction \
     && mkdir -p storage/framework/{sessions,views,cache} storage/app/public bootstrap/cache \
-    && chmod -R 775 storage bootstrap/cache \
-    && php artisan storage:link || true
+    && chmod -R 775 storage bootstrap/cache
+
+# Copy entrypoint script
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 EXPOSE 8000
 
 # Hostinger will inject env vars via docker-compose environment; generate APP_KEY if empty
-CMD sh -c "php artisan config:clear && \
-    if [ -z \"\$APP_KEY\" ]; then php artisan key:generate --force; fi && \
-    php artisan migrate --force --no-interaction || true && \
-    php artisan serve --host=0.0.0.0 --port=8000"
+ENTRYPOINT ["/entrypoint.sh"]
