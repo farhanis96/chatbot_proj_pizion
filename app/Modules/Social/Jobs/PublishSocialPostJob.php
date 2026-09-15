@@ -31,12 +31,24 @@ class PublishSocialPostJob implements ShouldQueue
     {
         $post = SocialPost::find($this->postId);
 
+        Log::info('PublishSocialPostJob::handle', [
+            'post_id' => $this->postId,
+            'post_found' => $post !== null,
+            'post_status' => $post?->status ?? 'null',
+            'attempts' => $this->attempts(),
+            'tries' => $this->tries,
+            'finalAttempt' => $this->attempts() >= $this->tries,
+        ]);
+
         // Post deleted, already fully published, or reverted to draft — nothing to do.
         if (! $post || in_array($post->status, ['published', 'draft'], true)) {
+            Log::info('PublishSocialPostJob::handle: early return', ['post_id' => $this->postId]);
             return;
         }
 
+        Log::info('PublishSocialPostJob::handle: calling SocialPublisher::publish', ['post_id' => $this->postId]);
         $publisher->publish($post, finalAttempt: $this->attempts() >= $this->tries);
+        Log::info('PublishSocialPostJob::handle: publish completed', ['post_id' => $this->postId]);
     }
 
     /**

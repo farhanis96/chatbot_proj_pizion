@@ -49,12 +49,31 @@ class SocialPublisher
      */
     public function publish(SocialPost $post, bool $finalAttempt = true): void
     {
+        Log::info('SocialPublisher::publish start', [
+            'post_id' => $post->id,
+            'finalAttempt' => $finalAttempt,
+            'status_before' => $post->status,
+            'target_accounts' => $post->target_accounts,
+        ]);
+
         $post->update(['status' => 'publishing']);
+
+        Log::info('SocialPublisher::publish: accounts query', [
+            'post_id' => $post->id,
+            'workspace_id' => $post->workspace_id,
+            'target_accounts_count' => count($post->target_accounts ?? []),
+        ]);
 
         // Scope accounts to the post's own workspace to prevent cross-workspace publishing.
         $accounts = SocialAccount::where('workspace_id', $post->workspace_id)
             ->whereIn('id', $post->target_accounts ?? [])
             ->get();
+
+        Log::info('SocialPublisher::publish: accounts found', [
+            'post_id' => $post->id,
+            'accounts_count' => $accounts->count(),
+            'accounts_ids' => $accounts->pluck('id')->all(),
+        ]);
 
         $results = [];
         $retryableFailures = 0;
@@ -135,6 +154,12 @@ class SocialPublisher
         if (! $allFailed) {
             UsageMeter::track($post->workspace_id, 'social_posts');
         }
+
+        Log::info('SocialPublisher::publish: finalized', [
+            'post_id' => $post->id,
+            'final_status' => $allFailed ? 'failed' : 'published',
+            'results' => $results,
+        ]);
     }
 
     /**

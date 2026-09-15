@@ -33,6 +33,13 @@ class FacebookDriver implements SocialNetworkInterface
         $message = $postData['body'] ?? '';
         $mediaUrls = array_values(array_filter($postData['media_urls'] ?? [], fn ($u) => $u !== null && $u !== ''));
 
+        Log::info('FacebookDriver::publish', [
+            'pageId' => $pageId,
+            'has_token' => $token !== '',
+            'mediaUrls_count' => count($mediaUrls),
+            'message_length' => strlen($message),
+        ]);
+
         // Single image → POST /{page}/photos
         if (count($mediaUrls) === 1) {
             $res = Http::timeout(30)->post("https://graph.facebook.com/v19.0/{$pageId}/photos", [
@@ -80,11 +87,21 @@ class FacebookDriver implements SocialNetworkInterface
         }
 
         // Text-only post
+        Log::info('FacebookDriver::publish: text-only', [
+            'pageId' => $pageId,
+            'message' => substr($message, 0, 50),
+        ]);
         $res = Http::timeout(30)->post("https://graph.facebook.com/v19.0/{$pageId}/feed", [
             'message'      => $message,
             'link'         => $postData['link'] ?? null,
             'access_token' => $token,
         ])->json();
+
+        Log::info('FacebookDriver::publish: text-only response', [
+            'pageId' => $pageId,
+            'has_id' => isset($res['id']),
+            'response' => $res,
+        ]);
 
         if (! isset($res['id'])) {
             throw new \RuntimeException('Facebook publish failed: '.json_encode($res));
