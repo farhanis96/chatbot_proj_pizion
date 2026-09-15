@@ -15,6 +15,7 @@ use App\Modules\Social\Services\Drivers\TikTokDriver;
 use App\Modules\Social\Services\Drivers\TwitterDriver;
 use App\Modules\Social\Services\Drivers\YoutubeDriver;
 use App\Modules\Social\Services\OAuth\OAuthManager;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class SocialPublisher
@@ -108,11 +109,28 @@ class SocialPublisher
         $succeededCount = collect($results)->filter(fn ($r) => $r['status'] === 'published')->count();
         $allFailed = $succeededCount === 0;
 
-        $post->update([
-            'status' => $allFailed ? 'failed' : 'published', // partial success still marks published
-            'published_at' => $allFailed ? null : now(),
-            'publish_results' => $results,
-        ]);
+        try {
+            $post->update([
+                'status' => $allFailed ? 'failed' : 'published',
+                'published_at' => $allFailed ? null : now(),
+                'publish_results' => $results,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('SocialPublisher: final status update failed', [
+                'post_id' => $post->id,
+                'error' => $e->getMessage(),
+                'would_be_status' => $allFailed ? 'failed' : 'published',
+            ]);
+            // Force-update via DB facade to bypass model dirty-check issues
+            \DB::table('social_media_posts')
+                ->where('id', $post->id)
+                ->update([
+                    'status' => $allFailed ? 'failed' : 'published',
+                    'published_at' => $allFailed ? null : now(),
+                    'publish_results' => $results,
+                    'updated_at' => now(),
+                ]);
+        }
 
         if (! $allFailed) {
             UsageMeter::track($post->workspace_id, 'social_posts');

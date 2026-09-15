@@ -6,6 +6,7 @@ use App\Modules\Social\Models\SocialPost;
 use App\Modules\Social\Services\SocialPublisher;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class PublishSocialPostJob implements ShouldQueue
@@ -47,7 +48,17 @@ class PublishSocialPostJob implements ShouldQueue
         $post = SocialPost::find($this->postId);
 
         if ($post && in_array($post->status, ['publishing', 'scheduled'], true)) {
-            $post->update(['status' => 'failed']);
+            try {
+                $post->update(['status' => 'failed']);
+            } catch (\Throwable $e) {
+                Log::error('PublishSocialPostJob: failed() update failed', [
+                    'post_id' => $this->postId,
+                    'error' => $e->getMessage(),
+                ]);
+                DB::table('social_media_posts')
+                    ->where('id', $post->id)
+                    ->update(['status' => 'failed', 'updated_at' => now()]);
+            }
         }
 
         Log::error('Social post publish job failed permanently', [
