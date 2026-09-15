@@ -1,6 +1,9 @@
 #!/bin/sh
 set -e
 
+# Ensure storage/app/public exists (volume mount may overwrite build-time dir)
+mkdir -p storage/app/public
+
 # Run storage:link at container startup to ensure the symlink is correct
 # for the runtime volume mount
 php artisan storage:link || true
